@@ -1,10 +1,8 @@
-/*
- * A command line script to decode a ZCL payload at a given port
- * Example:
- *
- *     node decodeZCL.js 125 110A04020000290998
- */
- 
+var argv= process.argv.slice(2);
+obj = Decoder(Buffer.from(argv[1],'hex'),parseInt(argv[0], 10 ));
+console.dir(obj,{depth:null});
+
+
 // ----------------------------------------------------------------
 // ----------------------- FUNCTIONS PART -------------------------
 // ----------------------------------------------------------------
