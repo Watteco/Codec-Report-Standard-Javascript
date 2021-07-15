@@ -664,7 +664,6 @@ function Decoder(bytes, port) {
 			decoded.batch.report = "batch";
 		}
 	}
-
   return decoded;
 }
 
