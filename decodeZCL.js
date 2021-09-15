@@ -160,7 +160,7 @@ function Decoder(bytes, port) {
 					decoded.data.modbus_payload = "";
 					decoded.data.size = bytes[index]; 
 					decoded.data.modbus_float = 0; // 0: pas de décodage float 1: décodage float 2: décodage float 2word inversé
-					for( var j = 0; j < decoded.data.size -1; j++ )
+					for( var j = 0; j < decoded.data.size; j++ )
 					{
 						
 						temp_hex_str   = bytes[index+j+1].toString( 16 ).toUpperCase( );
