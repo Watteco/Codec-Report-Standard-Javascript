@@ -1,12 +1,34 @@
+/*
+ * A javascript template to decode a nke Watteco ZCL "like" standard payload at a given port
+ *
+ * Notice trhat this template is volontary very simple to be easiliy embedable in many javascript environnemnts
+ * That's why it willingly does not uses any specific API like (Buffer from Node.js, or npm, or any..)
+ *
+ * Basically it can be test as it is in TTN "payload formats decoder"
+ *
+ */
+ 
+/*
+ * To test simply present codec template on any computer, install Node.js (https://nodejs.org/en/) 
+ * 
+ * Then you can try decoding ZCL frames, by uncommenting first three lines below and 
+ * and then use commands like these in you "terminal/command" window:
+ *
+ *     node decodeZCL.js 125 110A04020000290998
+ *     node decodeZCL.js 125 1101800F80000041170064271080031B5800A000A00136000003E84E20901407
+ *
+ * You could also set the three following lines commented to implement you own Decoder(...) function calls...
+ *
+ */
+ 
 var argv= process.argv.slice(2);
 obj = Decoder(Buffer.from(argv[1],'hex'),parseInt(argv[0], 10 ));
 console.dir(obj,{depth:null});
 
 
 // ----------------------------------------------------------------
-// ----------------------- FUNCTIONS PART -------------------------
+// ----------------------- FUNCTIONS PART (Deprecated) ------------
 // ----------------------------------------------------------------
-
 function UintToInt(Uint, Size) {
     if (Size === 2) {
       if ((Uint & 0x8000) > 0) {
@@ -28,17 +50,6 @@ function UintToInt(Uint, Size) {
     return Uint;
 }
 
-function decimalToHex(d, padding) {
-    var hex = Number(d).toString(16).toUpperCase();
-    padding = typeof (padding) === "undefined" || padding === null ? padding = 2 : padding;
-
-    while (hex.length < padding) {
-        hex = "0" + hex;
-    }
-
-    return "0x" + hex;
-}
-
 function Bytes2Float32(bytes) {
     var sign = (bytes & 0x80000000) ? -1 : 1;
     var exponent = ((bytes >> 23) & 0xFF) - 127;
@@ -56,6 +67,74 @@ function Bytes2Float32(bytes) {
     return sign * significand * Math.pow(2, exponent);
 }
 
+// ----------------------------------------------------------------
+// ----------------------- FUNCTIONS PART -------------------------
+// ----------------------------------------------------------------
+
+/*
+ * Int conversion directly from buffer with start index and required endianess 
+ *
+ * Type must be     : U8,I8,U16,I16,U24,I24,U32,I32,U40,I40,...,U56,I56,I64
+ * LittleEndian if true either big endian
+ */
+function BytesToInt64(InBytes, StartIndex, Type,LittleEndian) 
+{
+    if( typeof(LittleEndian) == 'undefined' ) LittleEndian = false;
+    
+	var Signed  = (Type.substr(0,1) != "U");
+	var BytesNb = parseInt(Type.substr(1,2), 10)/8;
+	var inc, start; 
+	var nb = BytesNb;
+
+	if (LittleEndian)
+	{
+		inc = -1; 
+		start = StartIndex + BytesNb - 1;
+	}
+	else
+	{
+		inc =  1; start = StartIndex ;
+	}
+	
+	tmpInt64 = 0;
+	for (j=start; nb > 0;(j+=inc,nb--)) 
+	{
+		tmpInt64 = (tmpInt64 << 8) + InBytes[j];
+	}
+	
+	if ((Signed) && (BytesNb < 8) && (InBytes[start] & 0x80)) 
+		tmpInt64 = tmpInt64 - (0x01 << (BytesNb * 8)); 
+
+    return tmpInt64;
+}
+
+/*
+ * Float32 conversion directly from buffer with start index and required endianess 
+ *
+ * LittleEndian if true either big endian
+ */
+function BytesToFloat32(InBytes,StartIndex,LittleEndian) {
+    
+	if( typeof(LittleEndian) == 'undefined' ) LittleEndian = false;
+	
+	var buf = InBytes.slice(StartIndex,StartIndex+4);
+	if (! LittleEndian)	buf.reverse();
+	var f32a = new Float32Array((new Int8Array(buf)).buffer);
+	return f32a[0];
+}
+
+
+function decimalToHex(d, padding) {
+    var hex = Number(d).toString(16).toUpperCase();
+    padding = typeof (padding) === "undefined" || padding === null ? padding = 2 : padding;
+
+    while (hex.length < padding) {
+        hex = "0" + hex;
+    }
+
+    return "0x" + hex;
+}
+
 function parseHexString(str) { 
     var result = [];
     while (str.length >= 2) { 
@@ -67,6 +146,22 @@ function parseHexString(str) {
     return result;
 }
 
+function byteToHex(b) {
+	const hexChar = ["0", "1", "2", "3", "4", "5", "6", "7","8", "9", "A", "B", "C", "D", "E", "F"];
+	return hexChar[(b >> 4) & 0x0f] + hexChar[b & 0x0f];
+}
+
+function BytesToHexStr(buff) {
+	const hexOctets = [];
+    for (i = 0; i < buff.length; ++i) {
+		hexOctets.push( byteToHex(buff[i],2) );
+	}
+    return hexOctets.join("");
+}
+
+function zeroPad(num, places) {
+	return( String(num).padStart(places, '0') );
+}
 function Decoder(bytes, port) {
   // Decode an uplink message from a buffer
   // (array) of bytes to an object of fields.
@@ -624,6 +719,57 @@ function Decoder(bytes, port) {
 					);
 				}
 				
+				//XYZ Acceleration : Last on XYZ
+				if (  (clusterdID === 0x800f) ) {
+					i = index+1;
+					if (attributID === 0x0000) {
+						o = decoded.data.Last = {};
+						o.NbTriggedAcq = BytesToInt64(bytes,i,"U32"); i+=4;
+						o.Mean_X_G = BytesToInt64(bytes,i,"U16")/100.0; i+=2;
+						o.Max_X_G  = BytesToInt64(bytes,i,"U16")/100.0; i+=2;
+						o.Dt_X_ms  = BytesToInt64(bytes,i,"U16"); i+=2;
+						o.Mean_Y_G = BytesToInt64(bytes,i,"U16")/100.0; i+=2;
+						o.Max_Y_G  = BytesToInt64(bytes,i,"U16")/100.0; i+=2;
+						o.Dt_Y_ms  = BytesToInt64(bytes,i,"U16"); i+=2;
+						o.Mean_Z_G = BytesToInt64(bytes,i,"U16")/100.0; i+=2;
+						o.Max_Z_G  = BytesToInt64(bytes,i,"U16")/100.0; i+=2;
+						o.Dt_Z_ms  = BytesToInt64(bytes,i,"U16"); 
+					} else if (attributID === 0x0001 || (attributID === 0x0002) || (attributID === 0x0003)){
+						ext = (attributID === 0x0001 ? "Stats_X" : (attributID === 0x0002 ? "Stats_Y" : "Stats_Z"));
+						o = decoded.data[ext] = {};
+						o.NbAcq     = BytesToInt64(bytes,i,"U16"); i+=2;
+						o.MinMean_G = BytesToInt64(bytes,i,"U16")/100.0; i+=2;
+						o.MinMax_G  = BytesToInt64(bytes,i,"U16")/100.0; i+=2;
+						o.MinDt     = BytesToInt64(bytes,i,"U16"); i+=2;
+						o.MeanMean_G= BytesToInt64(bytes,i,"U16")/100.0; i+=2;
+						o.MeanMax_G = BytesToInt64(bytes,i,"U16")/100.0; i+=2;
+						o.MeanDt    = BytesToInt64(bytes,i,"U16"); i+=2;
+						o.MaxMean_G = BytesToInt64(bytes,i,"U16")/100.0; i+=2;
+						o.MaxMax_G  = BytesToInt64(bytes,i,"U16")/100.0; i+=2;
+						o.MaxDt     = BytesToInt64(bytes,i,"U16"); i+=2;
+					} else if (attributID === 0x8000) {
+						o = decoded.data.Params = {};
+						o.WaitFreq_Hz       = BytesToInt64(bytes,i,"U16")/10.0; i+=2;
+						o.AcqFreq_Hz        = BytesToInt64(bytes,i,"U16")/10.0; i+=2;
+						delay = BytesToInt64(bytes,i,"U16"); i+=2;
+						if (delay & 0x8000) delay = (delay & (~0x8000)) * 60;
+						o.NewWaitDelay_s    = (delay & 0x8000 ? delay = (delay & (~0x8000)) * 60 : delay);
+						o.MaxAcqDuration_ms = BytesToInt64(bytes,i,"U16"); i+=2;
+						o.Threshold_X_G     = BytesToInt64(bytes,i,"U16")/100.0; i+=2;
+						o.Threshold_Y_G     = BytesToInt64(bytes,i,"U16")/100.0; i+=2;
+						o.Threshold_Z_G     = BytesToInt64(bytes,i,"U16")/100.0; i+=2;
+						o.OverThrsh_Dt_ms   = BytesToInt64(bytes,i,"U16"); i+=2;
+						o.UnderThrsh_Dt_ms  = BytesToInt64(bytes,i,"U16"); i+=2;
+						o.Range_G           = BytesToInt64(bytes,i,"U16")/100; i+=2;
+						o.FilterSmoothCoef  = BytesToInt64(bytes,i,"U8"); i+=1;
+						o.FilterGainCoef    = BytesToInt64(bytes,i,"U8"); i+=1;
+						o = decoded.data.Params.WorkingModes = {};
+						o.SignalEachAcq     = (bytes[i] & 0x80 ? "true" : "false");
+						o.RstAftStdRpt_X    = (bytes[i] & 0x01 ? "true" : "false");
+						o.RstAftStdRpt_Y    = (bytes[i] & 0x02 ? "true" : "false");
+						o.RstAftStdRpt_7    = (bytes[i] & 0x04 ? "true" : "false");
+					}
+				}
 				
 			}
 		
