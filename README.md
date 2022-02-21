@@ -22,6 +22,10 @@ Example:
      node decodeZCL.js 125 1101800F80000041170064271080031B5800A000A00136000003E84E20901407
 
 
+Note
+------------
+decodeZCLAvecTIC.js Should only be used in case of frame comming from TICs'O sensor connected to French Electrical  Meter (ENEDIS)
+
 Francais
 -------------
 -------------
@@ -43,3 +47,6 @@ Example:
      
      node decodeZCL.js 125 1101800F80000041170064271080031B5800A000A00136000003E84E20901407
 
+Note
+------------
+decodeZCLAvecTIC.js peut être utilisé à la place de decodeZCL.js en cas de trame provenant de TICs'O connectées à un compteur électrique ENEDIS
