@@ -85,7 +85,7 @@ function Bytes2Float32(bytes) {
     if (exponent == -127) {
         if (significand == 0) return sign * 0.0;
         exponent = -126;
-        significand /= (1 << 22);
+        significand /= (1 << 23);
     } else significand = (significand | (1 << 23)) / (1 << 23);
 
     return sign * significand * Math.pow(2, exponent);
