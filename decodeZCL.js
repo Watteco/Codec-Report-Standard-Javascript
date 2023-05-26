@@ -620,6 +620,28 @@ function Decoder(bytes, port) {
 					index2 = index2 + 4; 
 					decoded.data.negative_reactive_power_W = UintToInt(bytes[index2+1]*256*256*256+bytes[index2+2]*256*256+bytes[index2+3]*256+bytes[index2+4],4);
 				}
+				
+				//energy and power multi metering
+				if (  (clusterdID === 0x8010) & (attributID === 0x0000)) {
+					decoded.data.ActiveEnergyWhPhaseA=Int32UnsignedToSigned(bytes[index+1]*256*256*256+bytes[index+2]*256*256+bytes[index+3]*256+bytes[index+4]);
+					decoded.data.ReactiveEnergyWhPhaseA=Int32UnsignedToSigned(bytes[index+5]*256*256*256+bytes[index+6]*256*256+bytes[index+7]*256+bytes[index+8]);
+					decoded.data.ActiveEnergyWhPhaseB=Int32UnsignedToSigned(bytes[index+9]*256*256*256+bytes[index+10]*256*256+bytes[index+11]*256+bytes[index+12]);
+					decoded.data.ReactiveEnergyWhPhaseB=Int32UnsignedToSigned(bytes[index+13]*256*256*256+bytes[index+14]*256*256+bytes[index+15]*256+bytes[index+16]);
+					decoded.data.ActiveEnergyWhPhaseC=Int32UnsignedToSigned(bytes[index+17]*256*256*256+bytes[index+18]*256*256+bytes[index+19]*256+bytes[index+20]);            
+					decoded.data.ReactiveEnergyWhPhaseC=Int32UnsignedToSigned(bytes[index+21]*256*256*256+bytes[index+22]*256*256+bytes[index+23]*256+bytes[index+24]);            
+					decoded.data.ActiveEnergyWhPhaseABC=Int32UnsignedToSigned(bytes[index+25]*256*256*256+bytes[index+26]*256*256+bytes[index+27]*256+bytes[index+28]);
+					decoded.data.ReactiveEnergyWhPhaseABC=Int32UnsignedToSigned(bytes[index+29]*256*256*256+bytes[index+30]*256*256+bytes[index+31]*256+bytes[index+32]);
+				} else if (  (clusterdID === 0x8010) & (attributID === 0x0001)) {
+					decoded.data.ActivePowerWPhaseA= Int32UnsignedToSigned(bytes[index+1]*256*256*256+bytes[index+2]*256*256+bytes[index+3]*256+bytes[index+4]);
+					decoded.data.ReactivePowerWPhaseA= Int32UnsignedToSigned(bytes[index+5]*256*256*256+bytes[index+6]*256*256+bytes[index+7]*256+bytes[index+8]);
+					decoded.data.ActivePowerWPhaseB=Int32UnsignedToSigned(bytes[index+9]*256*256*256+bytes[index+10]*256*256+bytes[index+11]*256+bytes[index+12]);
+					decoded.data.ReactivePowerWPhaseB=Int32UnsignedToSigned(bytes[index+13]*256*256*256+bytes[index+14]*256*256+bytes[index+15]*256+bytes[index+16]);
+					decoded.data.ActivePowerWPhaseC=Int32UnsignedToSigned(bytes[index+17]*256*256*256+bytes[index+18]*256*256+bytes[index+19]*256+bytes[index+20]);            
+					decoded.data.ReactivePowerWPhaseC=Int32UnsignedToSigned(bytes[index+21]*256*256*256+bytes[index+22]*256*256+bytes[index+23]*256+bytes[index+24]);            
+					decoded.data.ActivePowerWPhaseABC=Int32UnsignedToSigned(bytes[index+25]*256*256*256+bytes[index+26]*256*256+bytes[index+27]*256+bytes[index+28]);
+					decoded.data.ReactivePowerWPhaseABC=Int32UnsignedToSigned(bytes[index+29]*256*256*256+bytes[index+30]*256*256+bytes[index+31]*256+bytes[index+32]);
+				}
+				
 				//energy and power metering
 				if (  (clusterdID === 0x800b) & (attributID === 0x0000)) {
 					index2 = index;
@@ -629,6 +651,20 @@ function Decoder(bytes, port) {
 					index2 = index2 + 2; 
 					decoded.data.phase_angle = UintToInt(bytes[index2+1]*256+bytes[index2+2],2);
 				}
+				
+				 //voltage current multi metering
+				 if (  (clusterdID === 0x800d) & (attributID === 0x0000)) {
+				    decoded.data.VrmsA=UintToInt(bytes[index+1]*256+bytes[index+2],2)/10);
+				    decoded.data.IrmsA=UintToInt(bytes[index+3]*256+bytes[index+4],2)/10);
+				    decoded.data.PhaseA=UintToInt(bytes[index+5]*256+bytes[index+6],2)/10);
+				    decoded.data.VrmsB=UintToInt(bytes[index+7]*256+bytes[index+8],2)/10);
+				    decoded.data.IrmsB=UintToInt(bytes[index+9]*256+bytes[index+10],2)/10);
+				    decoded.data.PhaseB=UintToInt(bytes[index+11]*256+bytes[index+12],2)/10);
+				    decoded.data.VrmsC=UintToInt(bytes[index+13]*256+bytes[index+14],2)/10);
+				    decoded.data.IrmsC=UintToInt(bytes[index+15]*256+bytes[index+16],2)/10);
+				    decoded.data.PhaseC=UintToInt(bytes[index+17]*256+bytes[index+18],2)/10);
+				}
+				
 				//concentration
 				if (  (clusterdID === 0x800c) & (attributID === 0x0000)) {
 					decoded.data.Concentration = (bytes[index]*256+bytes[index+1]);
