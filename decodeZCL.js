@@ -656,13 +656,13 @@ function Decoder(bytes, port) {
 				 if (  (clusterdID === 0x800d) & (attributID === 0x0000)) {
 				    decoded.data.VrmsA=UintToInt(bytes[index+1]*256+bytes[index+2],2)/10;
 				    decoded.data.IrmsA=UintToInt(bytes[index+3]*256+bytes[index+4],2)/10;
-				    decoded.data.PhaseA=UintToInt(bytes[index+5]*256+bytes[index+6],2)/10;
+				    decoded.data.PhaseA=UintToInt(bytes[index+5]*256+bytes[index+6],2);
 				    decoded.data.VrmsB=UintToInt(bytes[index+7]*256+bytes[index+8],2)/10;
 				    decoded.data.IrmsB=UintToInt(bytes[index+9]*256+bytes[index+10],2)/10;
-				    decoded.data.PhaseB=UintToInt(bytes[index+11]*256+bytes[index+12],2)/10;
+				    decoded.data.PhaseB=UintToInt(bytes[index+11]*256+bytes[index+12],2);
 				    decoded.data.VrmsC=UintToInt(bytes[index+13]*256+bytes[index+14],2)/10;
 				    decoded.data.IrmsC=UintToInt(bytes[index+15]*256+bytes[index+16],2)/10;
-				    decoded.data.PhaseC=UintToInt(bytes[index+17]*256+bytes[index+18],2)/10;
+				    decoded.data.PhaseC=UintToInt(bytes[index+17]*256+bytes[index+18],2);
 				}
 				
 				//concentration
