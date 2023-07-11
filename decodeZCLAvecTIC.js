@@ -54,6 +54,11 @@ console.dir(obj,{depth:null});
 // ----------------------- FUNCTIONS PART (Deprecated) ------------
 // ----------------------------------------------------------------
 function UintToInt(Uint, Size) {
+    if (Size === 1) {
+      if ((Uint & 0x80) > 0) {
+        Uint = Uint - 0x100;
+      }
+    }
     if (Size === 2) {
       if ((Uint & 0x8000) > 0) {
         Uint = Uint - 0x10000;
@@ -1118,8 +1123,15 @@ function Decoder(bytes, port) {
 				
 				if (cmdID === 0x8a) decoded.zclheader.alarm = 1;
 				//data index start
-				if ((cmdID === 0x0a) | (cmdID === 0x8a))	index = 7;
-				if (cmdID === 0x01)	{index = 8; decoded.zclheader.status = bytes[6];}
+				if ((cmdID === 0x0a) | (cmdID === 0x8a))	{ 
+					decoded.zclheader.attribut_type = bytes[6]; 
+					index = 7;
+				}
+				if (cmdID === 0x01)	{
+					decoded.zclheader.status = bytes[6];
+					decoded.zclheader.attribut_type = bytes[7];
+					index = 8; 
+				}
 				
 				//temperature
 				if (  (clusterdID === 0x0402 ) & (attributID === 0x0000)) decoded.data.temperature = (UintToInt(bytes[index]*256+bytes[index+1],2))/100;
@@ -1149,8 +1161,53 @@ function Decoder(bytes, port) {
 					decoded.data.pin_state_9 = ((bytes[index]&0x01) === 0x01);
 					decoded.data.pin_state_10 = ((bytes[index]&0x02) === 0x02);
 				}
+				// Number 
+				if (  (clusterdID === 0x800E ) & (attributID === 0x0000)) {
+					switch (decoded.zclheader.attribut_type) 
+					{
+						// UInt 8/16/24/32
+						case 0x20: decoded.data.UInt8 = bytes[index]; break;
+						case 0x21: decoded.data.UInt16 = bytes[index]*256+bytes[index+1]; break;
+						case 0x22: decoded.data.UInt24 = bytes[index]*256*256+bytes[index+1]*256+bytes[index+2]; break;
+						case 0x23: decoded.data.UInt32 = bytes[index]*256*256*256+bytes[index+1]*256*256+bytes[index+2]*256+bytes[index+3]; break;
+
+						// Int 8/16/24/32
+						case 0x28: decoded.data.UInt8 = UintToInt(bytes[index],1); break;
+						case 0x29: decoded.data.UInt16 = UintToInt(bytes[index]*256+bytes[index+1],2); break;
+						case 0x2a: decoded.data.UInt24 = UintToInt(bytes[index]*256*256+bytes[index+1]*256+bytes[index+2],3); break;
+						case 0x2b: decoded.data.UInt32 = UintToInt(bytes[index]*256*256*256+bytes[index+1]*256*256+bytes[index+2]*256+bytes[index+3],4); break;
+						
+						// Float
+						case 0x39: decoded.data.Float = Bytes2Float32(bytes[index]*256*256*256+bytes[index+1]*256*256+bytes[index+2]*256+bytes[index+3]); break; 
+
+						default:
+							decoded.data.value = NaN;
+
+					}
+				}
 				//analog input
-				if (  (clusterdID === 0x000c ) & (attributID === 0x0055)) decoded.data.analog = Bytes2Float32(bytes[index]*256*256*256+bytes[index+1]*256*256+bytes[index+2]*256+bytes[index+3]);
+				if (  (clusterdID === 0x000c ) ) {
+					if (attributID === 0x0055) { decoded.data.analog = Bytes2Float32(bytes[index]*256*256*256+bytes[index+1]*256*256+bytes[index+2]*256+bytes[index+3]); };
+					if (attributID === 0x8003) { decoded.data.power_duration = bytes[index]*256 + bytes[index+1]; };
+					if (attributID === 0x8004) { 
+						o = decoded.data.chock_parameters = {};
+
+						tmp = (bytes[index] & 0xC0) >> 6;
+						o.mode = ( tmp == 0 ? "Idle" : (tmp == 1 ? "Chock" : (tmp == 2 ? "Click" : "Undef")));
+
+						tmp = (bytes[index] & 0x3C) >> 2;
+						freqs = [0,1,10,25,50,100,200,400,1620,5376];
+						o.sampling_frequency_hz = freqs[tmp];
+
+						tmp = (bytes[index] & 0x03);
+						range_lbl = ["+/-2g","+/-4g","+/-8g","+/-16g"];
+						resol = [16,32,62,186];
+						o.range = range_lbl[tmp];
+
+						tmp2 = (bytes[index+1] & 0x7F);
+						o.threshold_mg = tmp2 * resol[tmp];  
+					}
+				}
 
 				//modbus 
 				if (  (clusterdID === 0x8007 ) & (attributID === 0x0001)) 
@@ -1526,6 +1583,28 @@ function Decoder(bytes, port) {
 					index2 = index2 + 4; 
 					decoded.data.negative_reactive_power_W = UintToInt(bytes[index2+1]*256*256*256+bytes[index2+2]*256*256+bytes[index2+3]*256+bytes[index2+4],4);
 				}
+				
+				//energy and power multi metering
+				if (  (clusterdID === 0x8010) & (attributID === 0x0000)) {
+					decoded.data.ActiveEnergyWhPhaseA=Int32UnsignedToSigned(bytes[index+1]*256*256*256+bytes[index+2]*256*256+bytes[index+3]*256+bytes[index+4]);
+					decoded.data.ReactiveEnergyWhPhaseA=Int32UnsignedToSigned(bytes[index+5]*256*256*256+bytes[index+6]*256*256+bytes[index+7]*256+bytes[index+8]);
+					decoded.data.ActiveEnergyWhPhaseB=Int32UnsignedToSigned(bytes[index+9]*256*256*256+bytes[index+10]*256*256+bytes[index+11]*256+bytes[index+12]);
+					decoded.data.ReactiveEnergyWhPhaseB=Int32UnsignedToSigned(bytes[index+13]*256*256*256+bytes[index+14]*256*256+bytes[index+15]*256+bytes[index+16]);
+					decoded.data.ActiveEnergyWhPhaseC=Int32UnsignedToSigned(bytes[index+17]*256*256*256+bytes[index+18]*256*256+bytes[index+19]*256+bytes[index+20]);            
+					decoded.data.ReactiveEnergyWhPhaseC=Int32UnsignedToSigned(bytes[index+21]*256*256*256+bytes[index+22]*256*256+bytes[index+23]*256+bytes[index+24]);            
+					decoded.data.ActiveEnergyWhPhaseABC=Int32UnsignedToSigned(bytes[index+25]*256*256*256+bytes[index+26]*256*256+bytes[index+27]*256+bytes[index+28]);
+					decoded.data.ReactiveEnergyWhPhaseABC=Int32UnsignedToSigned(bytes[index+29]*256*256*256+bytes[index+30]*256*256+bytes[index+31]*256+bytes[index+32]);
+				} else if (  (clusterdID === 0x8010) & (attributID === 0x0001)) {
+					decoded.data.ActivePowerWPhaseA= Int32UnsignedToSigned(bytes[index+1]*256*256*256+bytes[index+2]*256*256+bytes[index+3]*256+bytes[index+4]);
+					decoded.data.ReactivePowerWPhaseA= Int32UnsignedToSigned(bytes[index+5]*256*256*256+bytes[index+6]*256*256+bytes[index+7]*256+bytes[index+8]);
+					decoded.data.ActivePowerWPhaseB=Int32UnsignedToSigned(bytes[index+9]*256*256*256+bytes[index+10]*256*256+bytes[index+11]*256+bytes[index+12]);
+					decoded.data.ReactivePowerWPhaseB=Int32UnsignedToSigned(bytes[index+13]*256*256*256+bytes[index+14]*256*256+bytes[index+15]*256+bytes[index+16]);
+					decoded.data.ActivePowerWPhaseC=Int32UnsignedToSigned(bytes[index+17]*256*256*256+bytes[index+18]*256*256+bytes[index+19]*256+bytes[index+20]);            
+					decoded.data.ReactivePowerWPhaseC=Int32UnsignedToSigned(bytes[index+21]*256*256*256+bytes[index+22]*256*256+bytes[index+23]*256+bytes[index+24]);            
+					decoded.data.ActivePowerWPhaseABC=Int32UnsignedToSigned(bytes[index+25]*256*256*256+bytes[index+26]*256*256+bytes[index+27]*256+bytes[index+28]);
+					decoded.data.ReactivePowerWPhaseABC=Int32UnsignedToSigned(bytes[index+29]*256*256*256+bytes[index+30]*256*256+bytes[index+31]*256+bytes[index+32]);
+				}
+				
 				//energy and power metering
 				if (  (clusterdID === 0x800b) & (attributID === 0x0000)) {
 					index2 = index;
@@ -1535,6 +1614,20 @@ function Decoder(bytes, port) {
 					index2 = index2 + 2; 
 					decoded.data.phase_angle = UintToInt(bytes[index2+1]*256+bytes[index2+2],2);
 				}
+				
+				 //voltage current multi metering
+				 if (  (clusterdID === 0x800d) & (attributID === 0x0000)) {
+				    decoded.data.VrmsA=UintToInt(bytes[index+1]*256+bytes[index+2],2)/10;
+				    decoded.data.IrmsA=UintToInt(bytes[index+3]*256+bytes[index+4],2)/10;
+				    decoded.data.PhaseA=UintToInt(bytes[index+5]*256+bytes[index+6],2);
+				    decoded.data.VrmsB=UintToInt(bytes[index+7]*256+bytes[index+8],2)/10;
+				    decoded.data.IrmsB=UintToInt(bytes[index+9]*256+bytes[index+10],2)/10;
+				    decoded.data.PhaseB=UintToInt(bytes[index+11]*256+bytes[index+12],2);
+				    decoded.data.VrmsC=UintToInt(bytes[index+13]*256+bytes[index+14],2)/10;
+				    decoded.data.IrmsC=UintToInt(bytes[index+15]*256+bytes[index+16],2)/10;
+				    decoded.data.PhaseC=UintToInt(bytes[index+17]*256+bytes[index+18],2);
+				}
+				
 				//concentration
 				if (  (clusterdID === 0x800c) & (attributID === 0x0000)) {
 					decoded.data.Concentration = (bytes[index]*256+bytes[index+1]);
@@ -1706,7 +1799,7 @@ function Decoder(bytes, port) {
 				if ((bytes[9] & 0x80) === 0x80) {decoded.zclheader.min.value = (bytes[9]-0x80)*256+bytes[10];decoded.zclheader.min.unity = "minutes";} else {decoded.zclheader.min.value = bytes[9]*256+bytes[10];decoded.zclheader.min.unity = "seconds";}
 				//max
 				decoded.zclheader.max = {}
-				if ((bytes[11] & 0x80) === 0x80) {decoded.zclheader.max.value = (bytes[11]-0x80)*256+bytes[12];decoded.zclheader.max.unity = "minutes";} else {decoded.zclheader.max.value = bytes[9]*256+bytes[10];decoded.zclheader.max.unity = "seconds";}
+				if ((bytes[11] & 0x80) === 0x80) {decoded.zclheader.max.value = (bytes[11]-0x80)*256+bytes[12];decoded.zclheader.max.unity = "minutes";} else {decoded.zclheader.max.value = bytes[11]*256+bytes[12];decoded.zclheader.max.unity = "seconds";}
 				decoded.lora.payload  = "";
 
 			}

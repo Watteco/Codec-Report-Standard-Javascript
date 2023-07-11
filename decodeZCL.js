@@ -30,6 +30,11 @@ console.dir(obj,{depth:null});
 // ----------------------- FUNCTIONS PART (Deprecated) ------------
 // ----------------------------------------------------------------
 function UintToInt(Uint, Size) {
+    if (Size === 1) {
+      if ((Uint & 0x80) > 0) {
+        Uint = Uint - 0x100;
+      }
+    }
     if (Size === 2) {
       if ((Uint & 0x8000) > 0) {
         Uint = Uint - 0x10000;
@@ -216,8 +221,15 @@ function Decoder(bytes, port) {
 				
 				if (cmdID === 0x8a) decoded.zclheader.alarm = 1;
 				//data index start
-				if ((cmdID === 0x0a) | (cmdID === 0x8a))	index = 7;
-				if (cmdID === 0x01)	{index = 8; decoded.zclheader.status = bytes[6];}
+				if ((cmdID === 0x0a) | (cmdID === 0x8a))	{ 
+					decoded.zclheader.attribut_type = bytes[6]; 
+					index = 7;
+				}
+				if (cmdID === 0x01)	{
+					decoded.zclheader.status = bytes[6];
+					decoded.zclheader.attribut_type = bytes[7];
+					index = 8; 
+				}
 				
 				//temperature
 				if (  (clusterdID === 0x0402 ) & (attributID === 0x0000)) decoded.data.temperature = (UintToInt(bytes[index]*256+bytes[index+1],2))/100;
@@ -247,8 +259,53 @@ function Decoder(bytes, port) {
 					decoded.data.pin_state_9 = ((bytes[index]&0x01) === 0x01);
 					decoded.data.pin_state_10 = ((bytes[index]&0x02) === 0x02);
 				}
+				// Number 
+				if (  (clusterdID === 0x800E ) & (attributID === 0x0000)) {
+					switch (decoded.zclheader.attribut_type) 
+					{
+						// UInt 8/16/24/32
+						case 0x20: decoded.data.UInt8 = bytes[index]; break;
+						case 0x21: decoded.data.UInt16 = bytes[index]*256+bytes[index+1]; break;
+						case 0x22: decoded.data.UInt24 = bytes[index]*256*256+bytes[index+1]*256+bytes[index+2]; break;
+						case 0x23: decoded.data.UInt32 = bytes[index]*256*256*256+bytes[index+1]*256*256+bytes[index+2]*256+bytes[index+3]; break;
+
+						// Int 8/16/24/32
+						case 0x28: decoded.data.UInt8 = UintToInt(bytes[index],1); break;
+						case 0x29: decoded.data.UInt16 = UintToInt(bytes[index]*256+bytes[index+1],2); break;
+						case 0x2a: decoded.data.UInt24 = UintToInt(bytes[index]*256*256+bytes[index+1]*256+bytes[index+2],3); break;
+						case 0x2b: decoded.data.UInt32 = UintToInt(bytes[index]*256*256*256+bytes[index+1]*256*256+bytes[index+2]*256+bytes[index+3],4); break;
+						
+						// Float
+						case 0x39: decoded.data.Float = Bytes2Float32(bytes[index]*256*256*256+bytes[index+1]*256*256+bytes[index+2]*256+bytes[index+3]); break; 
+
+						default:
+							decoded.data.value = NaN;
+
+					}
+				}
 				//analog input
-				if (  (clusterdID === 0x000c ) & (attributID === 0x0055)) decoded.data.analog = Bytes2Float32(bytes[index]*256*256*256+bytes[index+1]*256*256+bytes[index+2]*256+bytes[index+3]);
+				if (  (clusterdID === 0x000c ) ) {
+					if (attributID === 0x0055) { decoded.data.analog = Bytes2Float32(bytes[index]*256*256*256+bytes[index+1]*256*256+bytes[index+2]*256+bytes[index+3]); };
+					if (attributID === 0x8003) { decoded.data.power_duration = bytes[index]*256 + bytes[index+1]; };
+					if (attributID === 0x8004) { 
+						o = decoded.data.chock_parameters = {};
+
+						tmp = (bytes[index] & 0xC0) >> 6;
+						o.mode = ( tmp == 0 ? "Idle" : (tmp == 1 ? "Chock" : (tmp == 2 ? "Click" : "Undef")));
+
+						tmp = (bytes[index] & 0x3C) >> 2;
+						freqs = [0,1,10,25,50,100,200,400,1620,5376];
+						o.sampling_frequency_hz = freqs[tmp];
+
+						tmp = (bytes[index] & 0x03);
+						range_lbl = ["+/-2g","+/-4g","+/-8g","+/-16g"];
+						resol = [16,32,62,186];
+						o.range = range_lbl[tmp];
+
+						tmp2 = (bytes[index+1] & 0x7F);
+						o.threshold_mg = tmp2 * resol[tmp];  
+					}
+				}
 
 				//modbus 
 				if (  (clusterdID === 0x8007 ) & (attributID === 0x0001)) 
