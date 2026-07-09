@@ -376,8 +376,8 @@ function Decoder(bytes, port) {
 					decoded.data.multimodbus_frame_series_sent = bytes[index+1];
 					decoded.data.multimodbus_frame_number_in_serie = (bytes[index+2] & 0xE0) >> 5; 
 					decoded.data.multimodbus_last_frame_of_serie = (bytes[index+2] & 0x1C ) >> 2; 
-					decoded.data.multimodbus_EP9 = ((bytes[index+2]&0x01) === 0x01);
-					decoded.data.multimodbus_EP8 = ((bytes[index+2]&0x02) === 0x02);
+					decoded.data.multimodbus_EP9 = ((bytes[index+2]&0x02) === 0x02);
+					decoded.data.multimodbus_EP8 = ((bytes[index+2]&0x01) === 0x01);
 					decoded.data.multimodbus_EP7 = ((bytes[index+3]&0x80) === 0x80);
 					decoded.data.multimodbus_EP6 = ((bytes[index+3]&0x40) === 0x40);
 					decoded.data.multimodbus_EP5 = ((bytes[index+3]&0x20) === 0x20);
@@ -600,25 +600,25 @@ function Decoder(bytes, port) {
 					if (decoded.data.multimodbus_EP9 === true)
 					{
 						if (without_header === 0){						
-							decoded.data.multimodbus_EP6_slaveID = bytes[index2];
+							decoded.data.multimodbus_EP9_slaveID = bytes[index2];
 							index2 = index2 + 1;
-							decoded.data.multimodbus_EP6_fnctID = bytes[index2];
+							decoded.data.multimodbus_EP9_fnctID = bytes[index2];
 							index2 = index2 + 1;
-							decoded.data.multimodbus_EP6_datasize = bytes[index2];
+							decoded.data.multimodbus_EP9_datasize = bytes[index2];
 							index2 = index2 + 1;
 						}
-						decoded.data.multimodbus_EP6_payload = ""
+						decoded.data.multimodbus_EP9_payload = ""
 						if (bytes[index2] === undefined ) return decoded;
-						for( var j = 0; j < decoded.data.multimodbus_EP6_datasize; j++ )
+						for( var j = 0; j < decoded.data.multimodbus_EP9_datasize; j++ )
 						{
 							temp_hex_str   = bytes[index2+j].toString( 16 ).toUpperCase( );
 							if( temp_hex_str.length == 1 )
 							{
 								temp_hex_str = "0" + temp_hex_str;
 							}
-							decoded.data.multimodbus_EP6_payload += temp_hex_str;
+							decoded.data.multimodbus_EP9_payload += temp_hex_str;
 						}
-						index2 = index2 + decoded.data.multimodbus_EP6_datasize;
+						index2 = index2 + decoded.data.multimodbus_EP9_datasize;
 					}
 
 				}
