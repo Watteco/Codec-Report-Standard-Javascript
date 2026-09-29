@@ -1,5 +1,14 @@
 # decodeZCL
 
+> [!WARNING]
+> **Deprecated — basic decoding template.** This project provides a basic decoding template for only some standard frames from Watteco devices, with very few integrity checks. It is not exhaustive.
+>
+> For new integrations, use **[Watteco/Codec-API-LoRaWAN](https://github.com/Watteco/Codec-API-LoRaWAN)** instead.
+>
+> **Obsolète — modèle de décodage basique.** Ce projet fournit un modèle de décodage basique pour certaines trames standard des équipements Watteco uniquement, avec très peu de contrôles d'intégrité. Il n'est pas exhaustif.
+>
+> Pour toute nouvelle intégration, privilégiez **[Watteco/Codec-API-LoRaWAN](https://github.com/Watteco/Codec-API-LoRaWAN)**.
+
 English
 -------------
 -------------
